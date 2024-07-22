@@ -48,8 +48,9 @@ class DrawImage extends CustomPainter {
           final path = Path();
           path.addOval(
             Rect.fromCircle(
-                center: _offset[1]!,
-                radius: (_offset[0]! - _offset[1]!).distance),
+              center: _offset[1]!,
+              radius: 10.0,
+            ),
           );
           canvas.drawPath(path, _painter);
           break;

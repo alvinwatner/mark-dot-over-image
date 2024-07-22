@@ -23,16 +23,15 @@ class _MobileExampleState extends State<MobileExample> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Image Painter Example"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.save_alt),
-            onPressed: saveImage,
-          )
-        ],
+        title: const Text("Select From Map"),
+        actions: [],
       ),
-      body: ImagePainter.asset(
-        "assets/sample.jpg",
+      floatingActionButton: ElevatedButton(
+        onPressed: saveImage,
+        child: Text("Mark Location"),
+      ),
+      body: ImagePainter.network(
+        "https://www.spiritoffreedom.com.au/wp-content/uploads/2022/03/Main-Deck-B-1024x354.png",
         controller: _controller,
         scalable: true,
         textDelegate: TextDelegate(),

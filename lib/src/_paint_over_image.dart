@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -413,6 +414,7 @@ class ImagePainterState extends State<ImagePainter> {
   late final ValueNotifier<bool> _isLoaded;
   late final TextEditingController _textController;
   late final TransformationController _transformationController;
+  bool _isInteracting = false;
 
   int _strokeMultiplier = 1;
   late TextDelegate textDelegate;
@@ -421,6 +423,10 @@ class ImagePainterState extends State<ImagePainter> {
     super.initState();
     _isLoaded = ValueNotifier<bool>(false);
     _controller = widget.controller;
+    _controller.update(
+      mode: PaintMode.circle,
+      color: Colors.red,
+    );
     if (widget.isSignature) {
       _controller.update(
         mode: PaintMode.freeStyle,
@@ -546,7 +552,7 @@ class ImagePainterState extends State<ImagePainter> {
       width: widget.width ?? double.maxFinite,
       child: Column(
         children: [
-          if (widget.controlsAtTop && widget.showControls) _buildControls(),
+          // if (widget.controlsAtTop && widget.showControls) _buildControls(),
           Expanded(
             child: FittedBox(
               alignment: FractionalOffset.center,
@@ -554,20 +560,56 @@ class ImagePainterState extends State<ImagePainter> {
                 child: AnimatedBuilder(
                   animation: _controller,
                   builder: (context, child) {
-                    return InteractiveViewer(
-                      transformationController: _transformationController,
-                      maxScale: 2.4,
-                      minScale: 1,
-                      panEnabled: _controller.mode == PaintMode.none,
-                      scaleEnabled: widget.isScalable!,
-                      onInteractionUpdate: _scaleUpdateGesture,
-                      onInteractionEnd: _scaleEndGesture,
-                      child: CustomPaint(
-                        size: imageSize,
-                        willChange: true,
-                        isComplex: true,
-                        painter: DrawImage(
-                          controller: _controller,
+                    return GestureDetector(
+                      onTapDown: (details) {
+                        Future.delayed(const Duration(milliseconds: 200), () {
+                          log("onTapDown = $_isInteracting");
+                          if (!_isInteracting) {
+                            widget.onClear?.call();
+                            _controller.clear();
+                            final _zoomAdjustedOffset =
+                                _transformationController
+                                    .toScene(details.localPosition);
+                            // log("_scaleUpdateGesture = $_zoomAdjustedOffset");
+                            _controller.setStart(_zoomAdjustedOffset);
+                            _controller.setInProgress(true);
+                            _controller.setEnd(_zoomAdjustedOffset);
+                            _controller.addOffsets(_zoomAdjustedOffset);
+
+                            _controller.setInProgress(false);
+                            _controller.addOffsets(null);
+                            _addDot();
+                            _controller.offsets.clear();
+                            _controller.resetStartAndEnd();
+                          }
+                        });
+                      },
+                      child: InteractiveViewer(
+                        transformationController: _transformationController,
+                        maxScale: 2.4,
+                        minScale: 1,
+                        panEnabled: true,
+                        onInteractionStart: (details) {
+                          _isInteracting = true;
+                          log("onInteractionStart = $_isInteracting");
+                        },
+                        onInteractionEnd: (details) {
+                          Future.delayed(
+                            const Duration(milliseconds: 30),
+                            () {
+                              _isInteracting = false;
+                              log("onInteractionEnd = $_isInteracting");
+                            },
+                          );
+                        },
+                        scaleEnabled: widget.isScalable!,
+                        child: CustomPaint(
+                          size: imageSize,
+                          willChange: true,
+                          isComplex: true,
+                          painter: DrawImage(
+                            controller: _controller,
+                          ),
                         ),
                       ),
                     );
@@ -599,9 +641,6 @@ class ImagePainterState extends State<ImagePainter> {
                     transformationController: _transformationController,
                     panEnabled: false,
                     scaleEnabled: false,
-                    onInteractionStart: _scaleStartGesture,
-                    onInteractionUpdate: _scaleUpdateGesture,
-                    onInteractionEnd: _scaleEndGesture,
                     child: CustomPaint(
                       willChange: true,
                       isComplex: true,
@@ -642,60 +681,19 @@ class ImagePainterState extends State<ImagePainter> {
     );
   }
 
-  _scaleStartGesture(ScaleStartDetails onStart) {
-    final _zoomAdjustedOffset =
-        _transformationController.toScene(onStart.localFocalPoint);
-    if (!widget.isSignature) {
-      _controller.setStart(_zoomAdjustedOffset);
-      _controller.addOffsets(_zoomAdjustedOffset);
-    }
-  }
-
-  ///Fires while user is interacting with the screen to record painting.
-  void _scaleUpdateGesture(ScaleUpdateDetails onUpdate) {
-    final _zoomAdjustedOffset =
-        _transformationController.toScene(onUpdate.localFocalPoint);
-    _controller.setInProgress(true);
-    if (_controller.start == null) {
-      _controller.setStart(_zoomAdjustedOffset);
-    }
-    _controller.setEnd(_zoomAdjustedOffset);
-    if (_controller.mode == PaintMode.freeStyle) {
-      _controller.addOffsets(_zoomAdjustedOffset);
-    }
-    if (_controller.onTextUpdateMode) {
-      _controller.paintHistory
-          .lastWhere((element) => element.mode == PaintMode.text)
-          .offsets = [_zoomAdjustedOffset];
-    }
-  }
-
-  ///Fires when user stops interacting with the screen.
-  void _scaleEndGesture(ScaleEndDetails onEnd) {
-    _controller.setInProgress(false);
-    if (_controller.start != null &&
-        _controller.end != null &&
-        (_controller.mode == PaintMode.freeStyle)) {
-      _controller.addOffsets(null);
-      _addFreeStylePoints();
-      _controller.offsets.clear();
-    } else if (_controller.start != null &&
-        _controller.end != null &&
-        _controller.mode != PaintMode.text) {
-      _addEndPoints();
-    }
-    _controller.resetStartAndEnd();
-  }
-
-  void _addEndPoints() => _addPaintHistory(
-        PaintInfo(
-          offsets: <Offset?>[_controller.start, _controller.end],
-          mode: _controller.mode,
+  void _addDot() {
+    _controller.addPaintInfo(
+      PaintInfo(
+          mode: PaintMode.circle,
+          offsets: [
+            _controller.start,
+            _controller.start
+          ], // Use start offset for both to create a fixed radius circle
           color: _controller.color,
           strokeWidth: _controller.scaledStrokeWidth,
-          fill: _controller.fill,
-        ),
-      );
+          fill: true),
+    );
+  }
 
   void _addFreeStylePoints() => _addPaintHistory(
         PaintInfo(
