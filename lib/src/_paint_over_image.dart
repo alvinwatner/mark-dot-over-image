@@ -50,6 +50,7 @@ class ImagePainter extends StatefulWidget {
     this.optionColor,
     this.onUndo,
     this.onClear,
+    this.onMarked,
   }) : super(key: key);
 
   ///Constructor for loading image from network url.
@@ -57,6 +58,7 @@ class ImagePainter extends StatefulWidget {
     String url, {
     required ImagePainterController controller,
     Key? key,
+    void Function(bool isMarked)? onMarked,
     double? height,
     double? width,
     Widget? placeholderWidget,
@@ -81,6 +83,7 @@ class ImagePainter extends StatefulWidget {
   }) {
     return ImagePainter._(
       key: key,
+      onMarked: onMarked,
       controller: controller,
       networkUrl: url,
       height: height,
@@ -112,6 +115,7 @@ class ImagePainter extends StatefulWidget {
     String path, {
     required ImagePainterController controller,
     Key? key,
+    void Function(bool isMarked)? onMarked,
     double? height,
     double? width,
     bool? scalable,
@@ -136,6 +140,7 @@ class ImagePainter extends StatefulWidget {
   }) {
     return ImagePainter._(
       controller: controller,
+      onMarked: onMarked,
       key: key,
       assetPath: path,
       height: height,
@@ -167,6 +172,7 @@ class ImagePainter extends StatefulWidget {
     File file, {
     required ImagePainterController controller,
     Key? key,
+    void Function(bool isMarked)? onMarked,
     double? height,
     double? width,
     bool? scalable,
@@ -192,6 +198,7 @@ class ImagePainter extends StatefulWidget {
     return ImagePainter._(
       controller: controller,
       key: key,
+      onMarked: onMarked,
       file: file,
       height: height,
       width: width,
@@ -222,6 +229,7 @@ class ImagePainter extends StatefulWidget {
     Uint8List byteArray, {
     required ImagePainterController controller,
     Key? key,
+    void Function(bool isMarked)? onMarked,
     double? height,
     double? width,
     bool? scalable,
@@ -247,6 +255,7 @@ class ImagePainter extends StatefulWidget {
     return ImagePainter._(
       controller: controller,
       key: key,
+      onMarked: onMarked,
       byteArray: byteArray,
       height: height,
       width: width,
@@ -278,6 +287,7 @@ class ImagePainter extends StatefulWidget {
     required double height,
     required double width,
     Key? key,
+    void Function(bool isMarked)? onMarked,
     Color? signatureBgColor,
     List<Color>? colors,
     Widget? brushIcon,
@@ -300,6 +310,7 @@ class ImagePainter extends StatefulWidget {
     return ImagePainter._(
       controller: controller,
       key: key,
+      onMarked: onMarked,
       height: height,
       width: width,
       isSignature: true,
@@ -324,6 +335,9 @@ class ImagePainter extends StatefulWidget {
       onClear: onClear,
     );
   }
+
+  /// Invoked when the image was marked.
+  final void Function(bool isMarked)? onMarked;
 
   /// Class that holds the controller and it's methods.
   final ImagePainterController controller;
@@ -415,6 +429,7 @@ class ImagePainterState extends State<ImagePainter> {
   late final TextEditingController _textController;
   late final TransformationController _transformationController;
   bool _isInteracting = false;
+  bool _isMarked = false;
 
   int _strokeMultiplier = 1;
   late TextDelegate textDelegate;
@@ -682,6 +697,7 @@ class ImagePainterState extends State<ImagePainter> {
   }
 
   void _addDot() {
+    widget.onMarked!(true);
     _controller.addPaintInfo(
       PaintInfo(
           mode: PaintMode.circle,

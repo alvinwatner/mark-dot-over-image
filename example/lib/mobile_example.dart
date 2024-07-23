@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -32,6 +33,9 @@ class _MobileExampleState extends State<MobileExample> {
       ),
       body: ImagePainter.network(
         "https://www.spiritoffreedom.com.au/wp-content/uploads/2022/03/Main-Deck-B-1024x354.png",
+        onMarked: (isMarked) {
+          log("image is marked = $isMarked");
+        },
         controller: _controller,
         scalable: true,
         textDelegate: TextDelegate(),
